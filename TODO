@@ -1,0 +1,31 @@
+7 november 2011
+---------------
+
+. add support for the discid
+
+using the discid brings this fs some advantages:
+
+a. the fs is faster at startup. the discid contains information which is sufficient for the fs
+to show the contents of the cd: number of tracks and the startsector, and thereby the size per track.
+It does this a lot faster than the cdio_cddap_open/cdio_cddap_firstsector/cdio_cddap_lastsector/cdio_cddap_tracks calls.
+
+b. it provides an (unique) id which can be used to communicate with free cddb servers to get additional information.
+
+
+
+25 september 2011
+-----------------
+
+. move read ahead to read call: if everything is found in cache, the cdrom reader
+is not activated, and the current read ahead is not done
+when in read call (at the end, after fuse_reply) it's always done
+
+
+23 september 2011
+-----------------
+
+. testing the read ahead abilities
+
+. howto write the cache administration to a file/directory/db
+
+. write progress to a file read/read_command/read_result
