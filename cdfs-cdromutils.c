@@ -114,7 +114,8 @@ static int cddb_sum(int n)
 
 int create_track_info()
 {
-    int i, j, nreturn=0;
+	long int i = 0;
+    int j, nreturn=0;
     struct track_info_struct *track_info;
 
     logoutput("get trackinfo from %s", cdfs_options.device);
@@ -167,7 +168,7 @@ int create_track_info()
 
         track_info->lastsector=cdio_get_track_last_lsn(cdfs_device.p_cdio, i);
 
-        logoutput("track %i: %i - %i", i, track_info->firstsector_lsn, track_info->lastsector);
+        logoutput("track %li: %li - %li", i, track_info->firstsector_lsn, track_info->lastsector);
 
         i++;
 
@@ -184,7 +185,7 @@ char *create_unique_hash(const char *path)
     char *completeprogram=NULL;
     int nlen=0;
     char outputline[256];
-    char *hash;
+    char *hash = NULL;
 
     // if defined use the hash program defined on the commandline
     // maybe do this by using a library like mhash in stead of running an external command
@@ -277,8 +278,7 @@ char *create_unique_hash(const char *path)
 
 int create_discid()
 {
-    char path[PATH_MAX];
-    int i, j, nreturn;
+    int i, j, nreturn = 0;
     struct track_info_struct *track_info;
     unsigned nsum=0;
 
@@ -333,8 +333,6 @@ int create_discid()
 
     }
 
-    out:
-
     return nreturn;
 
 }
@@ -354,68 +352,39 @@ void *do_init_in_background()
 
     nreturn=create_discid();
 
-    if ( nreturn<0 ) goto out;
-
-    if ( cdfs_options.caching > 0 ) {
-
-        // create an unique hash to use in the cache path 
-
-        hash=create_unique_hash(cdfs_device.discidfile);
-
-    }
-
-    out:
-
-    if ( hash ) {
-
+	if(nreturn < 0) {
+	    if ( hash ) {
         logoutput2("do_init_in_background: got hash %s", hash);
+	        cdfs_options.cachehash=hash;
+	        snprintf(path, PATH_MAX, "%s/%s", cdfs_options.cache_directory, hash);
+	        nreturn=mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	        if ( nreturn==0 || ( nreturn==-1 && errno==EEXIST ) ) {
+	            // move the discid file to the new created directory
+	            snprintf(path, PATH_MAX, "%s/%s/discid", cdfs_options.cache_directory, hash);
+	            nreturn=rename(cdfs_device.discidfile, path);
+	            strcpy(cdfs_device.discidfile, path);
+	            // make the cache set and available
+	            pthread_mutex_lock(&cdfs_device.initmutex);
+	            cdfs_device.initready=1;
+	            pthread_cond_broadcast(&(cdfs_device.initcond));
+	            pthread_mutex_unlock(&cdfs_device.initmutex);
+	        }
+	    }
 
-        cdfs_options.cachehash=hash;
-
-        snprintf(path, PATH_MAX, "%s/%s", cdfs_options.cache_directory, hash);
-
-        nreturn=mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-        if ( nreturn==0 || ( nreturn==-1 && errno==EEXIST ) ) {
-
-            // move the discid file to the new created directory
-
-            snprintf(path, PATH_MAX, "%s/%s/discid", cdfs_options.cache_directory, hash);
-
-            nreturn=rename(cdfs_device.discidfile, path);
-
-            strcpy(cdfs_device.discidfile, path);
-
-            // make the cache set and available
-
-            pthread_mutex_lock(&cdfs_device.initmutex);
-
-            cdfs_device.initready=1;
-
-            pthread_cond_broadcast(&(cdfs_device.initcond));
-            pthread_mutex_unlock(&cdfs_device.initmutex);
-
-        }
-
-    }
-
-
-    if ( cdfs_device.initready==1 && cdfs_options.cachebackend==CDFS_CACHE_ADMIN_BACKEND_SQLITE ) {
-
-        // create the sqlite db
-
-        nreturn=create_sqlite_db(cdfs_device.nrtracks);
-
-        if ( nreturn<0 ) {
-
-            fprintf(stderr, "Error, cannot create the sqlite db (error: %i).\n", abs(nreturn));
-
-        }
-
-    }
-
-    return;
-
+	    if ( cdfs_device.initready==1 && cdfs_options.cachebackend==CDFS_CACHE_ADMIN_BACKEND_SQLITE ) {
+	        // create the sqlite db
+	        nreturn=create_sqlite_db(cdfs_device.nrtracks);
+	        if ( nreturn<0 ) {
+	            fprintf(stderr, "Error, cannot create the sqlite db (error: %i).\n", abs(nreturn));
+	        }
+	    }
+	} else {
+    	if ( cdfs_options.caching > 0 ) {
+	        // create an unique hash to use in the cache path 
+	        hash=create_unique_hash(cdfs_device.discidfile);
+	    }
+	}
+	return (void *) NULL;
 }
 
 int start_do_init_in_background_thread(pthread_t *pthreadid)
@@ -488,9 +457,9 @@ static int open_cdrom_cdda()
     // c. last sector
     // d. totalblocks
 
-    logoutput("Number of tracks: %li.", cdio_cddap_tracks(cdfs_device.cddevice));
-    logoutput("First audio sector: %li.", cdfs_device.cddevice->audio_first_sector);
-    logoutput("Last audio sector: %li.", cdfs_device.cddevice->audio_last_sector);
+    logoutput("Number of tracks: %i.", cdio_cddap_tracks(cdfs_device.cddevice));
+    logoutput("First audio sector: %zi.", cdfs_device.cddevice->audio_first_sector);
+    logoutput("Last audio sector: %zi.", cdfs_device.cddevice->audio_last_sector);
 
     cdfs_device.totalblocks=get_totalblocks();
 
@@ -1058,13 +1027,13 @@ static void *cdromreader_thread()
     int nreturn=0, nrsectors, nrstartsector, nrsectorsread, nrtotalsectorsread;
     struct caching_data_struct *caching_data;
     struct cached_block_struct *cached_block;
-    struct read_call_struct *read_call;
+    struct read_call_struct *read_call = NULL;
     unsigned char tries1, tries2;
     bool foundincache, cachetested;
     struct read_command_struct *read_command=NULL;
     struct read_command_struct *read_command_again=NULL;
     char *buffread, *buffer;
-    unsigned char cachereadlock;
+    unsigned char cachereadlock = NULL;
 
 
 
@@ -1463,8 +1432,6 @@ static void *cdromreader_thread()
 
         size_t size=nrsectors * CDIO_CD_FRAMESIZE_RAW;
 
-        createbuffer:
-
 	buffer=malloc(size);
 
 	if ( ! buffer ) {
@@ -1604,30 +1571,18 @@ static void *cdromreader_thread()
     pthread_mutex_destroy(&queue_lockmutex);
     pthread_cond_destroy(&queue_lockcond);
 
-}
+	return (void *) NULL;
 
+}
 
 int start_cdrom_reader_thread(pthread_t *pthreadid)
 {
-    int nreturn=0;
-
-    //
-    // create a thread to read the cd
-    //
-
+    int nreturn = 0;
+ 
     nreturn=pthread_create(pthreadid, NULL, cdromreader_thread, NULL);
-
-    if ( nreturn==-1 ) {
-
-	// some error creating the thread
-
-        nreturn=-errno;
-
-	logoutput("Error creating a new thread (error: %i).", abs(nreturn));
-
-
+    if(nreturn == -1) {
+		nreturn = -errno;
+		logoutput("Error creating a new thread (error: %i).", abs(nreturn));
     }
-
     return nreturn;
-
 }

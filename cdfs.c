@@ -192,7 +192,7 @@ static void cdfs_lookup(fuse_req_t req, fuse_ino_t parentino, const char *name)
 	e.attr_timeout = cdfs_options.attr_timeout;
 	e.entry_timeout = cdfs_options.entry_timeout;
 
-	logoutput2("lookup return size: %zi", e.attr.st_size);
+	logoutput2("lookup return size: %"PRIu64, e.attr.st_size);
 
     }
 
@@ -510,7 +510,7 @@ static int readdir_cdrom(struct cdfs_generic_dirp_struct *dirp)
     if ( dirp->underfs_offset <= cdfs_device.nrtracks ) {
 
 	dirp->direntry.d_type=DT_REG;
-	sprintf(dirp->direntry.d_name, "track-%.2d.wav", dirp->underfs_offset);
+	sprintf(dirp->direntry.d_name, "track-%ju.wav",(uintmax_t)dirp->underfs_offset);
 
 	nreturn=1;
 
@@ -737,7 +737,6 @@ static void cdfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_inf
 
 static void cdfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
-    int flags = (fi->flags & O_ACCMODE);
     int nreturn=0, fd=0, res;
     struct cdfs_entry_struct *entry=NULL;
     struct cdfs_inode_struct *inode=NULL;
@@ -1382,9 +1381,7 @@ static void cdfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *
 
     fi->fh=0;
 
-    out:
-
-    fuse_reply_err(req, abs(nreturn));
+     fuse_reply_err(req, abs(nreturn));
 
 }
 
@@ -1462,7 +1459,6 @@ static void cdfs_statfs(fuse_req_t req, fuse_ino_t ino)
 static void cdfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name, const char *value, size_t size, int flags)
 {
     int nreturn=0;
-    int openflags = O_RDWR;
     struct cdfs_entry_struct *entry;
     struct cdfs_inode_struct *inode;
     char *basexattr=NULL;
@@ -1541,7 +1537,6 @@ static void cdfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size
     struct cdfs_entry_struct *entry;
     struct cdfs_inode_struct *inode;
     void *value=NULL;
-    int openflags = O_RDONLY;
     struct xattr_workspace_struct *xattr_workspace;
     char *basexattr=NULL;
 
@@ -1663,7 +1658,7 @@ static void cdfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size
 
 	    fuse_reply_buf(req, value, strlen(value));
 
-            logoutput1("getxattr, fuse_reply_buf value %s", value);
+            logoutput1("getxattr, fuse_reply_buf value %s",(char *)value);
 
 	}
 
@@ -1679,10 +1674,9 @@ static void cdfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size
 
 static void cdfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
-    ssize_t nlenlist, nlenlist_workspace;
+    ssize_t nlenlist = 0;
     int nreturn=0;
-    char *list;
-    int openflags = O_RDONLY;
+    char *list = NULL;
     struct cdfs_entry_struct *entry;
     struct cdfs_inode_struct *inode;
 
@@ -1776,7 +1770,7 @@ static void cdfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 
 void create_pid_file()
 {
-int fd=0,res;
+int fd=0;
 pathstring path;
 char *buf, *tmpchar;
 struct stat st;
@@ -1797,7 +1791,7 @@ if ( tmpchar ) {
 
 	logoutput1("storing pid: %s in %s", buf, path);
 
-	res=stat(path, &st);
+	stat(path, &st);
 
 
 	if ( S_ISREG(st.st_mode) ) {
@@ -1813,7 +1807,7 @@ if ( tmpchar ) {
 
 	if ( fd>0 ) {
 
-	    res=write(fd, buf, strlen(buf));
+	    write(fd, buf, strlen(buf));
 
 	    close(fd);
 
@@ -2259,9 +2253,6 @@ int main(int argc, char *argv[])
         }
 
     }
-
-    out:
-
     fuse_opt_free_args(&cdfs_args);
 
     closelog();

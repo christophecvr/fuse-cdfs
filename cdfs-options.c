@@ -41,17 +41,15 @@
 
 static void usage(const char *progname, FILE *f)
 {
-	fprintf(f, "usage: %s [opts] -o cache-directory=DIR\n",
+	fprintf(f, progname, "usage: [progname] [opts] -o cache-directory=DIR\n",
 		"             device=DEVICE\n",
 		"             progressfifo=FILE\n",
 	        "             [logging=NR,]\n",
 	        "             --cachebackend=none[default],sqlite\n",
 	        "             --readaheadpolicy=none/piece/whole\n",
 	        "             --hashprogram=[prog]\n",
-	        "             --discid=FILE\n",
-		progname);
+            "             --discid=FILE\n");
 }
-
 
 int cdfs_options_output_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
 {

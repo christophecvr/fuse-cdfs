@@ -224,9 +224,8 @@ int fuse_session_loop_epoll_mt(struct fuse_session *se, unsigned char loglevel)
 	struct fuse_chan *ch = NULL;
 	ssize_t readlen;
 	struct signalfd_siginfo fdsi;
-	int signo, nreturn, nerror;
+	int signo = 0, nreturn = 0, nerror = 0;
 	sigset_t fuse_sigset;
-	pid_t cpid;
 	struct fuse_epoll_data_struct *fuse_epoll_data;
 	struct fuse_worker_thread_data_struct fuse_worker_data[NUM_WORKER_THREADS];
 	struct fuse_worker_thread_data_struct *tmp_worker_data;
@@ -628,7 +627,7 @@ int fuse_session_loop_epoll_mt(struct fuse_session *se, unsigned char loglevel)
 
 		        	// look at the pid of the child with waitpid for preventing zombies
 
-		        	cpid=waitpid(fdsi.ssi_pid, NULL, WNOHANG);
+		        		waitpid(fdsi.ssi_pid, NULL, WNOHANG);
 
 	            	    } else if ( signo == SIGIO) {
 

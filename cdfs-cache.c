@@ -139,7 +139,6 @@ static void move_read_result_to_unused_list(struct read_result_struct *read_resu
 struct caching_data_struct *create_caching_data()
 {
     struct caching_data_struct *caching_data;
-    int nreturn=0;
 
     caching_data=malloc(sizeof(struct caching_data_struct));
 
@@ -298,7 +297,7 @@ int create_cache_file(struct caching_data_struct *caching_data, const char *name
 
 int write_to_cached_file(struct caching_data_struct *caching_data, char *buffer, off_t offset, size_t size)
 {
-    int nreturn=0;
+    int nreturn = 0;
     int fd=0;
     unsigned char openhere=0;
 
@@ -423,7 +422,7 @@ static void move_cached_block_to_unused_list(struct cached_block_struct *cached_
 
 int get_readlock_caching_data(struct caching_data_struct *caching_data)
 {
-    int nreturn=0;
+    int nreturn = 0;
     int nerror=0;
 
     logoutput2("get_readlock_caching_data");
@@ -492,7 +491,7 @@ int get_readlock_caching_data(struct caching_data_struct *caching_data)
 
 int release_readlock_caching_data(struct caching_data_struct *caching_data)
 {
-    int nreturn=0;
+    int nreturn = 0;
     int nerror=0;
 
 
@@ -563,7 +562,7 @@ int release_readlock_caching_data(struct caching_data_struct *caching_data)
 
 int get_writelock_caching_data(struct caching_data_struct *caching_data)
 {
-    int nreturn=0;
+    int nreturn = 0;
     int nerror=0;
 
     logoutput2("get_writelock_caching_data");
@@ -661,7 +660,7 @@ int get_writelock_caching_data(struct caching_data_struct *caching_data)
 
 int release_writelock_caching_data(struct caching_data_struct *caching_data)
 {
-    int nreturn=0;
+    int nreturn = 0;
     int nerror=0;
 
     logoutput2("release_writelock_caching_data");
@@ -1008,7 +1007,7 @@ struct cached_block_struct *get_first_cached_block_internal(struct caching_data_
 
 int send_read_result_to_cache(struct read_call_struct *read_call, struct caching_data_struct *caching_data, unsigned int startsector, char *buffer, unsigned int nrsectors)
 {
-    int nreturn=0;
+    int nreturn = 0;
     struct read_result_struct *read_result;
 
     logoutput2("send result to cache: new block 2 insert: (%i - %i)", startsector, startsector + nrsectors);
@@ -1157,7 +1156,6 @@ static void *cache_manager_thread()
     off_t offset_infile;
     struct caching_data_struct *caching_data;
     unsigned int nrsectors=0;
-    int nreturn=0, nerror=0;
 
 
     pthread_mutex_init(&results_lockmutex, NULL);
@@ -1165,78 +1163,48 @@ static void *cache_manager_thread()
 
 
     while (1) {
-
 	// wait for something on the results queue and free to lock/use
-
-	pthread_mutex_lock(&results_lockmutex);
-
-	while ( results_lock==1 || ! head_queue_read_results) {
-
-	    pthread_cond_wait(&results_lockcond, &results_lockmutex);
-
-	}
-
+		pthread_mutex_lock(&results_lockmutex);
+		while ( results_lock==1 || ! head_queue_read_results) {
+	    	pthread_cond_wait(&results_lockcond, &results_lockmutex);
+		}
         results_lock=1;
+		// queue is not empty: get the read result
+		read_result=head_queue_read_results;
+		// remove from results queue
+		head_queue_read_results=read_result->next;
+		if ( tail_queue_read_results == read_result ) tail_queue_read_results=head_queue_read_results;
+		if ( head_queue_read_results ) head_queue_read_results->prev=NULL;
 
-	// queue is not empty: get the read result
+		results_lock=0;
 
-	read_result=head_queue_read_results;
-
-	// remove from results queue
-
-	head_queue_read_results=read_result->next;
-	if ( tail_queue_read_results == read_result ) tail_queue_read_results=head_queue_read_results;
-	if ( head_queue_read_results ) head_queue_read_results->prev=NULL;
-
-	results_lock=0;
-
-	pthread_cond_broadcast(&(results_lockcond));
-	pthread_mutex_unlock(&(results_lockmutex)); /* release the results queue */
-
-
+		pthread_cond_broadcast(&(results_lockcond));
+		pthread_mutex_unlock(&(results_lockmutex)); /* release the results queue */
         logoutput2("cache manager: received read result: (%i - %i)", read_result->startsector, read_result->endsector);
-
-
-	// really detach from the queue
-	read_result->next=NULL;
-	read_result->prev=NULL;
-
-
+		// really detach from the queue
+		read_result->next=NULL;
+		read_result->prev=NULL;
         // lookup caching_data
-
         caching_data=read_result->caching_data;
 
         if ( ! caching_data ) {
-
-	    logoutput("cache manager: error!! caching_data not found!! serious io error");
-
+		    logoutput("cache manager: error!! caching_data not found!! serious io error");
 	    //
 	    // move the read_result to unused list
 	    //
-
             move_read_result_to_unused_list(read_result);
-
             continue;
-
         }
-
-
         //
         // write to cached file
         //
-
         nrsectors=read_result->endsector - read_result->startsector + 1;
         logoutput1("cache manager: number of sectors from read result: %i", nrsectors);
-
-
         //
         // todo : differ per cache backend
         //
-
         offset_infile=SIZE_RIFFHEADER + ( read_result->startsector - caching_data->startsector ) * CDIO_CD_FRAMESIZE_RAW;
         write_to_cached_file(caching_data, read_result->buffer, offset_infile, nrsectors * CDIO_CD_FRAMESIZE_RAW);
-
-
         //
         // update the cache administration
         // the actual number of sectors added to the cache is kept
@@ -1245,56 +1213,40 @@ static void *cache_manager_thread()
         // and there is some overlap
         // but that's probably not the case
         //
-
         nrsectors=insert_cached_block_internal(caching_data, read_result->startsector, read_result->endsector);
-
         logoutput1("cache manager: number of sectors inserted: %i", nrsectors);
-
         // here also: update the sqlite db.....
-
-
         // write progress to fifo
-
         if ( cdfs_options.progressfifo ) {
-
             write_progress_to_fifo(caching_data);
-
         }
-
         //
         // notify waiting clients
         // only if there is one
         // in case of read ahead (which is not started by any client but by the fs automatic)
         // there are none
-
         if ( read_result->read_call ) {
-
             notify_waiting_clients(read_result->read_call, read_result->startsector, read_result->endsector);
-
         }
-
-
         //
         // data written to file... so it's safe to free the buffer and read_result
         //
         // a big TODO: what to do here when the original read_call is "orphaned/lost/not there"
         //
-
         if ( read_result->buffer ) free(read_result->buffer);
         move_read_result_to_unused_list(read_result);
-
-
     }
 
     pthread_mutex_destroy(&results_lockmutex);
     pthread_cond_destroy(&results_lockcond);
 
+	return (void *) NULL;
 }
 
 
 int start_cache_manager_thread(pthread_t *pthreadid)
 {
-    int nreturn=0;
+    int nreturn = 0;
 
     //
     // create a thread to manage the cache
@@ -1330,7 +1282,7 @@ int start_cache_manager_thread(pthread_t *pthreadid)
 
 static int create_table_track(unsigned char tracknr)
 {
-    int nreturn=0;
+    int nreturn = 0;
     char sql_string[SQL_STRING_MAX_SIZE];
 
     snprintf(sql_string, SQL_STRING_MAX_SIZE, "CREATE TABLE IF NOT EXISTS tracknr_%i (startsector INTEGER PRIMARY KEY, endsector INTEGER)", tracknr);
@@ -1347,10 +1299,7 @@ static int create_table_track(unsigned char tracknr)
 
 int create_sqlite_db(unsigned char nrtracks)
 {
-    int nreturn=0, i;
-    char sql_string[SQL_STRING_MAX_SIZE];
-
-    // todo: add the hash to the path
+    int nreturn = 0, i = 0;
 
     if ( cdfs_options.cachehash ) {
 
@@ -1387,7 +1336,7 @@ int create_sqlite_db(unsigned char nrtracks)
 static int create_interval_sqlite(unsigned char tracknr, unsigned int startsector, unsigned int endsector)
 {
     char sql_string[SQL_STRING_MAX_SIZE];
-    int nreturn;
+    int nreturn = 0;
 
     logoutput2("add a new interval (%i, %i)\n", startsector, endsector);
 
@@ -1412,7 +1361,7 @@ static int create_interval_sqlite(unsigned char tracknr, unsigned int startsecto
 int remove_all_intervals_sqlite(unsigned char tracknr)
 {
     char sql_string[SQL_STRING_MAX_SIZE];
-    int nreturn;
+    int nreturn = 0;
 
     logoutput2("removing all intervals for tracknr %i\n", tracknr);
 
@@ -1434,7 +1383,7 @@ int remove_all_intervals_sqlite(unsigned char tracknr)
 int write_intervals_to_sqlitedb(struct caching_data_struct *caching_data)
 {
     struct cached_block_struct *cached_block=NULL;
-    int nreturn=0;
+    int nreturn = 0;
 
     // first clean everything, a little bit rude, but it works
 
@@ -1469,7 +1418,7 @@ int write_intervals_to_sqlitedb(struct caching_data_struct *caching_data)
 int write_all_intervals_to_sqlitedb()
 {
     struct caching_data_struct *caching_data=list_caching_data;
-    int nreturn=0;
+    int nreturn = 0;
 
     while (caching_data) {
 
@@ -1498,7 +1447,7 @@ int get_intervals_from_sqlite(struct caching_data_struct *caching_data)
     struct cached_block_struct *cached_block_first=NULL;
     struct cached_block_struct *cached_block_last=NULL;
     struct cached_block_struct *cached_block_new=NULL;
-    int nreturn=0;
+    int nreturn = 0;
     int count=0;
 
 

@@ -148,7 +148,6 @@ int setxattr4workspace(struct cdfs_entry_struct *entry, const char *name, const 
 
     }
 
-    out:
 
     return nreturn;
 
@@ -184,7 +183,7 @@ static void fill_in_simpleinteger(struct xattr_workspace_struct *xattr_workspace
 }
 
 
-static void fill_in_simplestring(struct xattr_workspace_struct *xattr_workspace, char *somestring)
+/*static void fill_in_simplestring(struct xattr_workspace_struct *xattr_workspace, char *somestring)
 {
     xattr_workspace->nlen=strlen(somestring);
 
@@ -209,7 +208,7 @@ static void fill_in_simplestring(struct xattr_workspace_struct *xattr_workspace,
 
     }
 
-}
+}*/
 
 
 
