@@ -22,7 +22,8 @@
 #include <ulockmgr.h>
 #include <dirent.h>
 
-#include <cdio/paranoia.h>
+#include <cdio/paranoia/paranoia.h>
+#include <cdio/paranoia/cdda.h>
 
 
 typedef char pathstring[PATH_MAX+1];

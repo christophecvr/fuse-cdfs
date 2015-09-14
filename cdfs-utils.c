@@ -36,7 +36,8 @@
 #include <sys/param.h>
 #include <fcntl.h>
 
-#include <cdio/paranoia.h>
+#include <cdio/paranoia/paranoia.h>
+#include <cdio/paranoia/cdda.h>
 
 
 

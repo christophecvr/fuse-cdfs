@@ -29,6 +29,8 @@
 #define HAVE_SETXATTR
 #endif
 
+#include <cdio/cdio.h>
+
 #define MODEMASK 07777
 
 #define SIZE_INODE_HASHTABLE 4096
